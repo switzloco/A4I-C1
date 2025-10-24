@@ -45,17 +45,8 @@ def print_welcome():
     print("\n" + "=" * 70 + "\n")
 
 
-async def create_session_async(session_service, app_name, user_id, session_id):
-    """Helper function to create session asynchronously"""
-    await session_service.create_session(
-        app_name=app_name,
-        user_id=user_id,
-        session_id=session_id
-    )
-
-
-def run_demo_mode():
-    """Run with sample queries to demonstrate capabilities"""
+async def run_demo_mode_async():
+    """Run with sample queries to demonstrate capabilities (async version)"""
     print_welcome()
     print("🎬 DEMO MODE - Running sample queries...\n")
 
@@ -94,8 +85,12 @@ def run_demo_mode():
     session_id = str(uuid.uuid4())
     user_id = "local_demo_user"
 
-    # *** FIX: Properly await the async session creation ***
-    asyncio.run(create_session_async(session_service, "agents", user_id, session_id))
+    # Create session in the same async context
+    await session_service.create_session(
+        app_name="agents",
+        user_id=user_id,
+        session_id=session_id
+    )
 
     for i, demo in enumerate(demo_queries, 1):
         print(f"\n{'─' * 70}")
@@ -107,17 +102,15 @@ def run_demo_mode():
             # Create the message object
             message = types.Content(role="user", parts=[types.Part(text=demo['query'])])
 
-            # Call runner.run() which returns events
-            events = runner.run(
+            # Use run_async() and async iteration
+            print(f"🤖 Response:")
+            final_response_printed = False
+
+            async for event in runner.run_async(
                 new_message=message,
                 session_id=session_id,
                 user_id=user_id
-            )
-
-            # Iterate over events to find the final response
-            print(f"🤖 Response:")
-            final_response_printed = False
-            for event in events:
+            ):
                 if event.is_final_response():
                     final_response = event.content.parts[0].text
                     print(f"{final_response}\n")
@@ -136,8 +129,8 @@ def run_demo_mode():
     print("=" * 70 + "\n")
 
 
-def run_interactive_mode():
-    """Run interactive conversation with the user"""
+async def run_interactive_mode_async():
+    """Run interactive conversation with the user (async version)"""
     print_welcome()
     print("💬 INTERACTIVE MODE")
     print("Type your questions below. Type 'quit' or 'exit' to stop.\n")
@@ -160,16 +153,22 @@ def run_interactive_mode():
     session_id = str(uuid.uuid4())
     user_id = "local_test_user"
 
-    # *** FIX: Properly await the async session creation ***
-    asyncio.run(create_session_async(session_service, "agents", user_id, session_id))
+    # Create session in the same async context
+    await session_service.create_session(
+        app_name="agents",
+        user_id=user_id,
+        session_id=session_id
+    )
 
     print("💡 Tip: Tell us your role for better recommendations!")
     print("   Example: 'I'm a parent' or 'I'm a teacher' or 'I'm on the school board'\n")
 
     while True:
         try:
-            # Get user input
-            user_input = input("You: ").strip()
+            # Get user input (using asyncio to not block)
+            loop = asyncio.get_event_loop()
+            user_input = await loop.run_in_executor(None, input, "You: ")
+            user_input = user_input.strip()
 
             if not user_input:
                 continue
@@ -185,17 +184,15 @@ def run_interactive_mode():
             # Create the message object
             message = types.Content(role="user", parts=[types.Part(text=user_input)])
 
-            # Call runner.run() which returns events
-            events = runner.run(
+            # Use run_async() and async iteration
+            print(f"Agent:")
+            final_response_printed = False
+
+            async for event in runner.run_async(
                 new_message=message,
                 session_id=session_id,
                 user_id=user_id
-            )
-
-            # Iterate over events to find the final response
-            print(f"Agent:")
-            final_response_printed = False
-            for event in events:
+            ):
                 if event.is_final_response():
                     final_response = event.content.parts[0].text
                     print(f"{final_response}\n")
@@ -225,9 +222,9 @@ def main():
 
     try:
         if demo_mode:
-            run_demo_mode()
+            asyncio.run(run_demo_mode_async())
         else:
-            run_interactive_mode()
+            asyncio.run(run_interactive_mode_async())
 
     except KeyboardInterrupt:
         print("\n\n👋 Goodbye!")
