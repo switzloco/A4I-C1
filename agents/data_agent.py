@@ -6,6 +6,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from tools.bigquery_tools import (
     query_bigquery,
+    query_school_analytics,
     get_school_data,
     get_test_scores,
     get_demographics,
@@ -36,17 +37,22 @@ def create_data_agent(project_id: str, dataset: str = "education_data", location
 
 Your PRIMARY responsibility is to retrieve education data from BigQuery.
 
+PRIMARY DATA SOURCE:
+- school_analytics_view: Consolidated view with ALL school data (demographics, test scores, funding, performance)
+- This is your main data source - it has everything in one place!
+
 AVAILABLE TOOLS:
-1. query_bigquery - Execute any SQL query against BigQuery
-2. get_school_data - Get school information (filtered by state/district)
-3. get_test_scores - Get test performance data (filtered by state/subject/year)
-4. get_demographics - Get student demographic data
+1. query_school_analytics - Query the consolidated view (PREFERRED - use this first!)
+2. query_bigquery - Execute any custom SQL query against BigQuery
+3. get_school_data - Get school information (filtered by state/district)
+4. get_test_scores - Get test performance data (filtered by state/subject/year)
+5. get_demographics - Get student demographic data
 
 SPECIALIZED QUERY TOOLS (for common priority questions):
-5. find_high_need_low_tech_spending - Find schools with high low-income % and low tech spending (for grant prioritization)
-6. find_high_graduation_low_funding - Find efficient schools with high grad rates despite low funding (for replicable models)
-7. find_strong_stem_low_class_size - Find schools with strong STEM and favorable class sizes
-8. search_education_data - Fallback when BigQuery data is not available
+6. find_high_need_low_tech_spending - Find schools with high low-income % and low tech spending
+7. find_high_graduation_low_funding - Find efficient schools with high grad rates despite low funding
+8. find_strong_stem_low_class_size - Find schools with strong STEM and favorable class sizes
+9. search_education_data - Fallback when BigQuery data is not available
 
 GUIDELINES:
 - When asked for data, translate the request into appropriate tool calls
@@ -89,6 +95,7 @@ Always respond with clear, actionable data summaries."""
 
     # Create function tools
     tools = [
+        FunctionTool(func=query_school_analytics),  # PRIMARY TOOL - consolidated view
         FunctionTool(func=query_bigquery),
         FunctionTool(func=get_school_data),
         FunctionTool(func=get_test_scores),

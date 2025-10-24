@@ -30,7 +30,7 @@ def get_insights_and_recommendations(
     global _recommender_agent, _critique_agent
 
     # Get project_id and location from environment or tool context
-    project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "qwiklabs-gcp-01-12fba4b98ccb")
+    project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "qwiklabs-gcp-04-b5171aa68bec")
     location = os.getenv("VERTEX_AI_LOCATION", "us-central1")
 
     # Initialize agents if not already done

@@ -1,6 +1,8 @@
 """
 ADK-Compatible BigQuery Tool Functions
 Uses ToolContext for state management and authentication
+
+Primary data source: school_analytics_view (consolidated view with all school data)
 """
 from typing import Dict, Any, List, Optional
 from google.cloud import bigquery
@@ -68,6 +70,62 @@ def query_bigquery(
         }
 
 
+def query_school_analytics(
+    filters: Optional[str] = None,
+    order_by: Optional[str] = None,
+    limit: int = 100,
+    tool_context: ToolContext = None
+) -> Dict[str, Any]:
+    """
+    Query the consolidated school_analytics_view with all school data.
+
+    This view contains all the data you need: school info, demographics, test scores,
+    funding, and performance metrics in one place.
+
+    Args:
+        filters: Optional WHERE clause filters (e.g., "State = 'CA' AND enrollment > 500")
+        order_by: Optional ORDER BY clause (e.g., "proficiency_rate DESC")
+        limit: Maximum number of records to return (default: 100)
+
+    Returns:
+        Dictionary with comprehensive school data from the consolidated view
+
+    Example:
+        query_school_analytics(
+            filters="State = 'CA' AND low_income_pct > 50",
+            order_by="proficiency_rate ASC",
+            limit=10
+        )
+    """
+    try:
+        project_id = tool_context.state.get("project_id")
+        dataset = tool_context.state.get("bigquery_dataset", "school_data")
+
+        # Build query using the consolidated view
+        query = f"""
+        SELECT *
+        FROM `{project_id}.{dataset}.school_analytics_view`
+        """
+
+        if filters:
+            query += f" WHERE {filters}"
+
+        if order_by:
+            query += f" ORDER BY {order_by}"
+
+        query += f" LIMIT {limit}"
+
+        # Use the query_bigquery function
+        return query_bigquery(query, tool_context)
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error querying school analytics: {str(e)}",
+            "data": []
+        }
+
+
 def get_school_data(
     state: Optional[str] = None,
     district: Optional[str] = None,
@@ -75,46 +133,35 @@ def get_school_data(
     tool_context: ToolContext = None
 ) -> Dict[str, Any]:
     """
-    Retrieve school information from the education dataset.
-    
+    Retrieve school information from the consolidated analytics view.
+
     Use this tool to get basic school data. You can filter by state and/or district.
-    
+
     Args:
         state: Optional 2-letter state code (e.g., 'CA', 'NY')
         district: Optional district name
         limit: Maximum number of schools to return (default: 100)
-        
+
     Returns:
         Dictionary with school data including name, location, enrollment, etc.
     """
     try:
-        project_id = tool_context.state.get("project_id")
-        dataset = tool_context.state.get("bigquery_dataset", "education_data")
-        
-        # Build query - using schooltable
-        query = f"""
-        SELECT 
-            School_Name as school_name,
-            District_Name as district,
-            State as state,
-            Enroll_Total as enrollment,
-            School_Level as school_level,
-            Latitude,
-            Longitude
-        FROM `{project_id}.{dataset}.schooltable`
-        WHERE 1=1
-        """
-        
+        # Build filters
+        filters = []
         if state:
-            query += f" AND state = '{state}'"
+            filters.append(f"State = '{state}'")
         if district:
-            query += f" AND district = '{district}'"
-            
-        query += f" LIMIT {limit}"
-        
-        # Use the query_bigquery function
-        return query_bigquery(query, tool_context)
-        
+            filters.append(f"District_Name = '{district}'")
+
+        filter_string = " AND ".join(filters) if filters else None
+
+        # Use the consolidated view
+        return query_school_analytics(
+            filters=filter_string,
+            limit=limit,
+            tool_context=tool_context
+        )
+
     except Exception as e:
         return {
             "status": "error",
