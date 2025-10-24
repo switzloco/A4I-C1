@@ -4,6 +4,7 @@ Wraps the Insights Agent to be callable as a function tool
 """
 from google.adk.tools import ToolContext
 from typing import Dict, Any, Optional
+import os
 from agents.recommender_agent import create_recommender_agent
 from agents.critique_agent import create_critique_agent
 
@@ -19,20 +20,24 @@ def get_insights_and_recommendations(
 ) -> Dict[str, Any]:
     """
     Generate insights and actionable recommendations for education questions.
-    
+
     Args:
         query: The education question or problem to address (include user type in query if relevant)
-        
+
     Returns:
         Dictionary with insights and recommendations
     """
     global _recommender_agent, _critique_agent
-    
+
+    # Get project_id and location from environment or tool context
+    project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "qwiklabs-gcp-01-12fba4b98ccb")
+    location = os.getenv("VERTEX_AI_LOCATION", "us-central1")
+
     # Initialize agents if not already done
     if _recommender_agent is None:
-        _recommender_agent = create_recommender_agent()
+        _recommender_agent = create_recommender_agent(project_id=project_id, location=location)
     if _critique_agent is None:
-        _critique_agent = create_critique_agent()
+        _critique_agent = create_critique_agent(project_id=project_id, location=location)
     
     # In a real implementation, you would:
     # 1. Call recommender agent with the query

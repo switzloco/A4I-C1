@@ -5,12 +5,16 @@ Evaluates and provides critical feedback on recommendations
 from google.adk.agents import LlmAgent
 
 
-def create_critique_agent() -> LlmAgent:
+def create_critique_agent(project_id: str = None, location: str = "us-central1") -> LlmAgent:
     """
     Create the Critique Sub-Agent using ADK LlmAgent.
-    
+
     This agent evaluates recommendations and provides critical analysis.
-    
+
+    Args:
+        project_id: Google Cloud project ID
+        location: Vertex AI location (default: us-central1)
+
     Returns:
         ADK LlmAgent configured as Critique Agent
     """
@@ -112,8 +116,11 @@ Your goal is to make recommendations BETTER through rigorous analysis."""
         name="CritiqueAgent",
         model="gemini-2.0-flash-exp",
         instruction=instruction,
-        tools=[]  # Critique agent doesn't need tools, it analyzes text
+        tools=[],  # Critique agent doesn't need tools, it analyzes text
+        vertexai=True,
+        project=project_id,
+        location=location
     )
-    
+
     return agent
 

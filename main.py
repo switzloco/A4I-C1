@@ -72,7 +72,8 @@ async def run_demo_mode_async():
     config = get_config()
     root_agent = create_root_agent(
         project_id=config.project_id,
-        dataset=config.bigquery_dataset
+        dataset=config.bigquery_dataset,
+        location=config.location
     )
 
     session_service = InMemorySessionService()
@@ -139,7 +140,8 @@ async def run_interactive_mode_async():
     config = get_config()
     root_agent = create_root_agent(
         project_id=config.project_id,
-        dataset=config.bigquery_dataset
+        dataset=config.bigquery_dataset,
+        location=config.location
     )
 
     session_service = InMemorySessionService()

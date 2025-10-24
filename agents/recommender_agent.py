@@ -12,12 +12,16 @@ from tools.analysis_tools import (
 from google.adk.tools import FunctionTool
 
 
-def create_recommender_agent() -> LlmAgent:
+def create_recommender_agent(project_id: str = None, location: str = "us-central1") -> LlmAgent:
     """
     Create the Recommender Sub-Agent using ADK LlmAgent.
-    
+
     This agent generates actionable recommendations based on education data analysis.
-    
+
+    Args:
+        project_id: Google Cloud project ID
+        location: Vertex AI location (default: us-central1)
+
     Returns:
         ADK LlmAgent configured as Recommender Agent
     """
@@ -82,8 +86,11 @@ When revising recommendations based on critique:
         name="RecommenderAgent",
         model="gemini-2.0-flash-exp",
         instruction=instruction,
-        tools=tools
+        tools=tools,
+        vertexai=True,
+        project=project_id,
+        location=location
     )
-    
+
     return agent
 

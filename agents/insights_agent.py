@@ -7,13 +7,17 @@ from agents.recommender_agent import create_recommender_agent
 from agents.critique_agent import create_critique_agent
 
 
-def create_insights_agent() -> LlmAgent:
+def create_insights_agent(project_id: str = None, location: str = "us-central1") -> LlmAgent:
     """
     Create the Insights Agent using ADK LlmAgent.
-    
+
     This agent orchestrates the Recommender and Critique agents to produce
     refined recommendations through an iterative feedback loop.
-    
+
+    Args:
+        project_id: Google Cloud project ID
+        location: Vertex AI location (default: us-central1)
+
     Returns:
         ADK LlmAgent configured as Insights Agent with sub-agents as tools
     """
@@ -134,17 +138,20 @@ IMPORTANT:
 - Track what changed and why
 - Ensure critique feedback is actually incorporated"""
 
-    # Create sub-agents
-    recommender_agent = create_recommender_agent()
-    critique_agent = create_critique_agent()
-    
-    # Create Insights agent with sub-agents as tools
+    # Create sub-agents with Vertex AI config
+    recommender_agent = create_recommender_agent(project_id=project_id, location=location)
+    critique_agent = create_critique_agent(project_id=project_id, location=location)
+
+    # Create Insights agent with sub-agents as tools and Vertex AI configuration
     agent = LlmAgent(
         name="InsightsAgent",
         model="gemini-2.0-flash-exp",
         instruction=instruction,
-        tools=[recommender_agent, critique_agent]  # Use agents as tools!
+        tools=[recommender_agent, critique_agent],  # Use agents as tools!
+        vertexai=True,
+        project=project_id,
+        location=location
     )
-    
+
     return agent
 

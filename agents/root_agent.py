@@ -9,21 +9,22 @@ from agents.insights_agent_tool import get_insights_and_recommendations
 from agents.config import ROOT_AGENT_PROMPT
 
 
-def create_root_agent(project_id: str, dataset: str = "education_data") -> LlmAgent:
+def create_root_agent(project_id: str, dataset: str = "education_data", location: str = "us-central1") -> LlmAgent:
     """
     Create the Root Agent using ADK LlmAgent.
-    
+
     The Root Agent uses function tools to access data and insights capabilities.
     This pattern allows agent orchestration within ADK's validation requirements.
-    
+
     Args:
         project_id: Google Cloud project ID
         dataset: BigQuery dataset name
-        
+        location: Vertex AI location (default: us-central1)
+
     Returns:
         ADK LlmAgent configured as Root Agent
     """
-    
+
     # Use persona-aware prompt from config and add tool descriptions
     instruction = ROOT_AGENT_PROMPT + f"""
 
@@ -49,11 +50,11 @@ def create_root_agent(project_id: str, dataset: str = "education_data") -> LlmAg
 - Project: {project_id}
 - Dataset: {dataset}
 """
-    
+
     # Use different model names for API vs Vertex AI
     model_name = "gemini-2.0-flash" if os.getenv("GOOGLE_API_KEY") else "gemini-1.5-pro"
-    
-    # Create agent with function tools
+
+    # Create agent with function tools and Vertex AI configuration
     agent = LlmAgent(
         model=model_name,
         name="RootAgent",
@@ -61,7 +62,10 @@ def create_root_agent(project_id: str, dataset: str = "education_data") -> LlmAg
         tools=[
             query_education_data,
             get_insights_and_recommendations
-        ]
+        ],
+        vertexai=True,
+        project=project_id,
+        location=location
     )
-    
+
     return agent

@@ -16,16 +16,17 @@ from tools.bigquery_tools import (
 )
 
 
-def create_data_agent(project_id: str, dataset: str = "education_data") -> LlmAgent:
+def create_data_agent(project_id: str, dataset: str = "education_data", location: str = "us-central1") -> LlmAgent:
     """
     Create the Data Agent using ADK LlmAgent.
-    
+
     The Data Agent is responsible for retrieving education data from BigQuery.
-    
+
     Args:
         project_id: Google Cloud project ID
         dataset: BigQuery dataset name
-        
+        location: Vertex AI location (default: us-central1)
+
     Returns:
         ADK LlmAgent configured as Data Agent
     """
@@ -99,13 +100,16 @@ Always respond with clear, actionable data summaries."""
         FunctionTool(func=search_education_data)
     ]
     
-    # Create the agent
+    # Create the agent with Vertex AI configuration
     agent = LlmAgent(
         name="DataAgent",
         model="gemini-2.0-flash-exp",
         instruction=instruction,
-        tools=tools
+        tools=tools,
+        vertexai=True,
+        project=project_id,
+        location=location
     )
-    
+
     return agent
 
