@@ -30,7 +30,7 @@ def match_schools(
         import google.auth
         import subprocess
         
-        # Get BigQuery client
+        # Get BigQuery client - don't pass project_id, let it default to environment
         try:
             result = subprocess.run(
                 ['gcloud', 'auth', 'print-access-token'],
@@ -42,10 +42,10 @@ def match_schools(
             from google.auth.transport.requests import Request
             from google.oauth2.credentials import Credentials
             creds = Credentials(token=access_token)
-            client = bigquery.Client(project=project_id, credentials=creds)
+            client = bigquery.Client(credentials=creds)
         except:
             credentials, _ = google.auth.default()
-            client = bigquery.Client(project=project_id, credentials=credentials)
+            client = bigquery.Client(credentials=credentials)
         
         # Build query based on student profile
         query = _build_matching_query(
@@ -126,7 +126,7 @@ def _build_matching_query(
     # Query with real data from joined tables
     query = f"""
     WITH school_data AS (
-        SELECT 
+        SELECT
             c.ncessch,
             c.school_name,
             c.lea_name as district_name,
@@ -142,38 +142,38 @@ def _build_matching_query(
             c.longitude,
             ROUND(SAFE_CAST(c.free_lunch AS FLOAT64) / NULLIF(SAFE_CAST(c.enrollment AS FLOAT64), 0) * 100, 1) as low_income_pct,
             ROUND(SAFE_CAST(c.enrollment AS FLOAT64) / NULLIF(SAFE_CAST(c.teachers_fte AS FLOAT64), 0), 1) as student_teacher_ratio,
-            
+
             -- Graduation data (for high schools) - use REAL data
             g.grad_rate_midpt as graduation_rate,
-            
+
             -- STEM programs - use REAL data (only for high schools, otherwise NULL)
-            CASE 
+            CASE
                 WHEN c.school_level = 3 THEN GREATEST(COALESCE(SAFE_CAST(ap.SCH_APCOURSES AS INT64), 0), 0)
-                ELSE NULL 
+                ELSE NULL
             END as ap_courses,
-            CASE 
+            CASE
                 WHEN c.school_level = 3 THEN GREATEST(COALESCE(SAFE_CAST(ap.TOT_APENR_M AS INT64), 0) + COALESCE(SAFE_CAST(ap.TOT_APENR_F AS INT64), 0), 0)
                 ELSE NULL
             END as ap_enrollment,
-            
+
             -- Gifted & Talented - use REAL data
             IF(gt.COMBOKEY IS NOT NULL, 1, 0) as has_gifted_program,
-            
+
             -- District finance - use REAL data
             f.per_pupil_total,
             f.per_pupil_instruction
-            
-        FROM `{project_id}.{dataset}.ccd_directory` c
-        LEFT JOIN `{project_id}.{dataset}.graduation_rates` g 
-            ON c.ncessch = g.ncessch 
-            AND SAFE_CAST(g.race AS INT64) = 99 
-            AND SAFE_CAST(g.disability AS INT64) = 99 
+
+        FROM `{dataset}.ccd_directory` c
+        LEFT JOIN `{dataset}.graduation_rates` g
+            ON c.ncessch = g.ncessch
+            AND SAFE_CAST(g.race AS INT64) = 99
+            AND SAFE_CAST(g.disability AS INT64) = 99
             AND SAFE_CAST(g.econ_disadvantaged AS INT64) = 99
-        LEFT JOIN `{project_id}.{dataset}.stem_advanced_placement` ap
+        LEFT JOIN `{dataset}.stem_advanced_placement` ap
             ON CONCAT(c.leaid, SAFE_CAST(c.school_id AS STRING)) = ap.COMBOKEY
-        LEFT JOIN `{project_id}.{dataset}.stem_gifted_and_talented` gt
+        LEFT JOIN `{dataset}.stem_gifted_and_talented` gt
             ON CONCAT(c.leaid, SAFE_CAST(c.school_id AS STRING)) = gt.COMBOKEY
-        LEFT JOIN `{project_id}.{dataset}.district_finance` f
+        LEFT JOIN `{dataset}.district_finance` f
             ON c.leaid = f.LEAID
         WHERE SAFE_CAST(c.enrollment AS INT64) >= 50
           AND SAFE_CAST(c.teachers_fte AS FLOAT64) > 0

@@ -1,15 +1,16 @@
 #!/bin/bash
 # Google Cloud Project Configuration
-export PROJECT_ID="qwiklabs-gcp-04-b5171aa68bec"
-export PROJECT_NUMBER="658656814425"
-export SERVICE_ACCOUNT_NAME="qwiklabs-gcp-04-b5171aa68bec@qwiklabs-gcp-04-b5171aa68bec.iam.gserviceaccount.com"
+# Set GCP_PROJECT environment variable before running this script
+export PROJECT_ID="${GCP_PROJECT:-your-project-id}"
+export PROJECT_NUMBER="${GCP_PROJECT_NUMBER:-your-project-number}"
+export SERVICE_ACCOUNT_NAME="${GCP_SERVICE_ACCOUNT:-default-sa@${PROJECT_ID}.iam.gserviceaccount.com}"
 
 # Spanner Configuration
 export SPANNER_INSTANCE_ID="edequity-spanner"
 export SPANNER_DATABASE_ID="school_data"
 
 # Google AI Configuration
-export GOOGLE_CLOUD_PROJECT="qwiklabs-gcp-04-b5171aa68bec"
+export GOOGLE_CLOUD_PROJECT="${GCP_PROJECT:-your-project-id}"
 export GOOGLE_GENAI_USE_VERTEXAI="TRUE"
 export GOOGLE_CLOUD_LOCATION="us-west1"
 

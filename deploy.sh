@@ -13,7 +13,7 @@ if [ -f "set_env.sh" ]; then
     source set_env.sh
 else
     echo "⚠️  set_env.sh not found. Using defaults..."
-    export PROJECT_ID="qwiklabs-gcp-04-b5171aa68bec"
+    export PROJECT_ID="${GCP_PROJECT:-your-project-id}"
     export REGION="us-west1"
     export REPO_NAME="instavibe-agents"
 fi
