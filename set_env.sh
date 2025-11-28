@@ -1,7 +1,7 @@
 #!/bin/bash
 # Google Cloud Project Configuration
 # Set GCP_PROJECT environment variable before running this script
-export PROJECT_ID="${GCP_PROJECT:-your-project-id}"
+export PROJECT_ID="${GCP_PROJECT:-notepal-458918}"
 export PROJECT_NUMBER="${GCP_PROJECT_NUMBER:-your-project-number}"
 export SERVICE_ACCOUNT_NAME="${GCP_SERVICE_ACCOUNT:-default-sa@${PROJECT_ID}.iam.gserviceaccount.com}"
 
@@ -10,7 +10,7 @@ export SPANNER_INSTANCE_ID="edequity-spanner"
 export SPANNER_DATABASE_ID="school_data"
 
 # Google AI Configuration
-export GOOGLE_CLOUD_PROJECT="${GCP_PROJECT:-your-project-id}"
+export GOOGLE_CLOUD_PROJECT="${GCP_PROJECT:-notepal-458918}"
 export GOOGLE_GENAI_USE_VERTEXAI="TRUE"
 export GOOGLE_CLOUD_LOCATION="us-west1"
 

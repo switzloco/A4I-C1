@@ -22,8 +22,8 @@ def get_config() -> AgentConfig:
     if not project_id:
         raise ValueError("GCP_PROJECT or GOOGLE_CLOUD_PROJECT environment variable must be set")
 
-    if project_id == "your-project-id":
-        print("⚠️  Warning: Using default project ID. Set GCP_PROJECT or GOOGLE_CLOUD_PROJECT environment variable.")
+    if not project_id or project_id == "your-project-id":
+        print("⚠️  Warning: Project ID not set or using placeholder. Set GCP_PROJECT or GOOGLE_CLOUD_PROJECT environment variable.")
     
     return AgentConfig(
         project_id=project_id,
