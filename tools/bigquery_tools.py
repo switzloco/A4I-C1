@@ -10,10 +10,11 @@ import subprocess
 import os
 
 
-def _get_bigquery_client(project_id: str):
+def _get_bigquery_client(project_id: str = None):
     """
     Get BigQuery client with proper authentication.
     Falls back to multiple auth methods to ensure it works.
+    If project_id is not provided, uses the default project from the environment.
     """
     try:
         # Try using gcloud access token (works with active gcloud auth)
@@ -25,19 +26,21 @@ def _get_bigquery_client(project_id: str):
                 check=True
             )
             access_token = result.stdout.strip()
-            
+
             from google.auth.transport.requests import Request
             from google.oauth2.credentials import Credentials
-            
+
             creds = Credentials(token=access_token)
-            return bigquery.Client(project=project_id, credentials=creds)
+            # Don't pass project_id - let it default to environment's project
+            return bigquery.Client(credentials=creds)
         except:
             # Fallback to default credentials
-            credentials, _ = google.auth.default()
-            return bigquery.Client(project=project_id, credentials=credentials)
+            credentials, project = google.auth.default()
+            # Don't pass project_id - let it default to environment's project
+            return bigquery.Client(credentials=credentials)
     except Exception as e:
-        # Last resort - try without explicit credentials
-        return bigquery.Client(project=project_id)
+        # Last resort - try without explicit credentials or project
+        return bigquery.Client()
 
 
 def query_bigquery(
@@ -116,7 +119,7 @@ def get_school_data(
         dataset = tool_context.state.get("bigquery_dataset", "education_data")
         
         query = f"""
-        SELECT 
+        SELECT
             ncessch,
             school_name,
             leaid,
@@ -133,7 +136,7 @@ def get_school_data(
             longitude,
             ROUND(free_lunch / NULLIF(enrollment, 0) * 100, 1) as low_income_pct,
             ROUND(enrollment / NULLIF(teachers_fte, 0), 1) as student_teacher_ratio
-        FROM `{project_id}.{dataset}.ccd_directory`
+        FROM `{dataset}.ccd_directory`
         WHERE state_location = '{state}'
           AND enrollment > 0
         """
@@ -176,7 +179,7 @@ def get_graduation_data(
         dataset = tool_context.state.get("bigquery_dataset", "education_data")
         
         query = f"""
-        SELECT 
+        SELECT
             ncessch,
             school_name,
             leaid,
@@ -185,7 +188,7 @@ def get_graduation_data(
             grad_rate_low,
             grad_rate_high,
             cohort_num
-        FROM `{project_id}.{dataset}.graduation_rates`
+        FROM `{dataset}.graduation_rates`
         WHERE race = 99  -- Overall (not by subgroup)
           AND disability = 99
           AND econ_disadvantaged = 99
@@ -229,7 +232,7 @@ def get_district_finance(
         dataset = tool_context.state.get("bigquery_dataset", "education_data")
         
         query = f"""
-        SELECT 
+        SELECT
             LEAID,
             NAME as district_name,
             MEMBERSCH as district_enrollment,
@@ -239,7 +242,7 @@ def get_district_finance(
             TOTALEXP as total_expenditure,
             TCURINST as current_instruction_spending,
             TCURSSVC as support_services_spending
-        FROM `{project_id}.{dataset}.district_finance`
+        FROM `{dataset}.district_finance`
         WHERE per_pupil_total > 0
         """
         
@@ -272,14 +275,14 @@ def get_state_averages(
         dataset = tool_context.state.get("bigquery_dataset", "education_data")
         
         query = f"""
-        SELECT 
+        SELECT
             AVG(ROUND(c.free_lunch / NULLIF(c.enrollment, 0) * 100, 1)) as avg_low_income_pct,
             AVG(f.per_pupil_total) as avg_per_pupil_spending,
             AVG(g.grad_rate_midpt) as avg_graduation_rate,
             AVG(ROUND(c.enrollment / NULLIF(c.teachers_fte, 0), 1)) as avg_student_teacher_ratio
-        FROM `{project_id}.{dataset}.ccd_directory` c
-        LEFT JOIN `{project_id}.{dataset}.district_finance` f ON c.leaid = f.LEAID
-        LEFT JOIN `{project_id}.{dataset}.graduation_rates` g ON c.ncessch = g.ncessch 
+        FROM `{dataset}.ccd_directory` c
+        LEFT JOIN `{dataset}.district_finance` f ON c.leaid = f.LEAID
+        LEFT JOIN `{dataset}.graduation_rates` g ON c.ncessch = g.ncessch
             AND g.race = 99 AND g.disability = 99 AND g.econ_disadvantaged = 99
         WHERE c.enrollment >= 100
         """
@@ -320,7 +323,7 @@ def find_high_need_low_tech_spending(
         state_avg = get_state_averages(tool_context)
         
         query = f"""
-        SELECT 
+        SELECT
             c.school_name,
             c.lea_name,
             c.city_location,
@@ -335,8 +338,8 @@ def find_high_need_low_tech_spending(
             COALESCE(f.per_pupil_instruction, 0) as per_pupil_instruction,
             -- Priority score: prioritize high low-income %
             (c.free_lunch / NULLIF(c.enrollment, 0) * 100) as priority_score
-        FROM `{project_id}.{dataset}.ccd_directory` c
-        LEFT JOIN `{project_id}.{dataset}.district_finance` f
+        FROM `{dataset}.ccd_directory` c
+        LEFT JOIN `{dataset}.district_finance` f
           ON c.leaid = f.LEAID
         WHERE c.enrollment >= 100
           AND c.free_lunch > 0
@@ -413,7 +416,7 @@ def find_high_graduation_low_funding(
         state_avg = get_state_averages(tool_context)
         
         query = f"""
-        SELECT 
+        SELECT
             c.school_name,
             c.lea_name,
             c.city_location,
@@ -427,10 +430,10 @@ def find_high_graduation_low_funding(
             c.charter,
             f.per_pupil_total,
             f.per_pupil_instruction
-        FROM `{project_id}.{dataset}.ccd_directory` c
-        INNER JOIN `{project_id}.{dataset}.graduation_rates` g
+        FROM `{dataset}.ccd_directory` c
+        INNER JOIN `{dataset}.graduation_rates` g
           ON c.ncessch = g.ncessch
-        LEFT JOIN `{project_id}.{dataset}.district_finance` f
+        LEFT JOIN `{dataset}.district_finance` f
           ON c.leaid = f.LEAID
         WHERE g.grad_rate_midpt >= {min_graduation_rate}
           AND (c.free_lunch / NULLIF(c.enrollment, 0) * 100) >= {min_low_income_pct}
@@ -506,7 +509,7 @@ def find_strong_stem_low_class_size(
         
         # Query with STEM data joined (using AP courses as STEM indicator)
         query = f"""
-        SELECT 
+        SELECT
             c.school_name,
             c.lea_name,
             c.city_location,
@@ -519,8 +522,8 @@ def find_strong_stem_low_class_size(
             ROUND(c.free_lunch / NULLIF(c.enrollment, 0) * 100, 1) as low_income_pct,
             ap.SCH_APCOURSES as ap_courses,
             COALESCE(ap.TOT_APENR_M, 0) + COALESCE(ap.TOT_APENR_F, 0) as total_ap_enrollment
-        FROM `{project_id}.{dataset}.ccd_directory` c
-        LEFT JOIN `{project_id}.{dataset}.stem_advanced_placement` ap
+        FROM `{dataset}.ccd_directory` c
+        LEFT JOIN `{dataset}.stem_advanced_placement` ap
           ON CONCAT(c.leaid, c.school_id) = ap.COMBOKEY
         WHERE c.enrollment >= 100
           AND c.teachers_fte > 0
@@ -616,7 +619,7 @@ def search_schools_with_stem(
             enrollment_col = "SCH_ENR_BIO_M + SCH_ENR_BIO_F"
         
         query = f"""
-        SELECT 
+        SELECT
             c.school_name,
             c.lea_name,
             c.city_location,
@@ -625,8 +628,8 @@ def search_schools_with_stem(
             c.longitude,
             ({enrollment_col}) as course_enrollment,
             ROUND(c.enrollment / NULLIF(c.teachers_fte, 0), 1) as student_teacher_ratio
-        FROM `{project_id}.{dataset}.ccd_directory` c
-        INNER JOIN `{project_id}.{dataset}.{table_name}` stem
+        FROM `{dataset}.ccd_directory` c
+        INNER JOIN `{dataset}.{table_name}` stem
           ON CONCAT(c.leaid, c.school_id) = stem.COMBOKEY
         WHERE ({enrollment_col}) >= {min_enrollment}
         ORDER BY course_enrollment DESC

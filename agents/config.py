@@ -17,10 +17,13 @@ class AgentConfig:
 
 def get_config() -> AgentConfig:
     """Get configuration from environment variables or defaults"""
-    project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "qwiklabs-gcp-04-b5171aa68bec")
-    
-    if project_id == "your-project-id":
-        print("⚠️  Warning: Using default project ID. Set GOOGLE_CLOUD_PROJECT environment variable.")
+    project_id = os.getenv("GCP_PROJECT") or os.getenv("GOOGLE_CLOUD_PROJECT")
+
+    if not project_id:
+        raise ValueError("GCP_PROJECT or GOOGLE_CLOUD_PROJECT environment variable must be set")
+
+    if not project_id or project_id == "your-project-id":
+        print("⚠️  Warning: Project ID not set or using placeholder. Set GCP_PROJECT or GOOGLE_CLOUD_PROJECT environment variable.")
     
     return AgentConfig(
         project_id=project_id,
